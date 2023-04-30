@@ -16,6 +16,6 @@ window.db = new Destiny2Database();
 
 log("MAIN", "Starting app...");
 
-await window.db.initializeDatabase();
+window.db.initializeDatabase();
 
 render(<App />, document.getElementById("app") as HTMLElement);
