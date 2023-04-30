@@ -10,6 +10,10 @@ env:
   VITE_BUNGIE_API_AUTHURL: ${{ secrets.VITE_BUNGIE_API_AUTHURL }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+concurrency:
+  group: "dataverse-app"
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Deploy to GitHub Pages
@@ -17,10 +21,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
 
       - name: Install dependencies
         run: |

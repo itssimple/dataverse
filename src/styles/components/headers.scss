@@ -1,0 +1,16 @@
+.spaced-header {
+  font-family: $header55Roman;
+  font-size: 2rem;
+  @media (max-width: 486px) {
+    font-size: 1.8rem;
+  }
+  text-transform: uppercase;
+  letter-spacing: 0.7rem;
+  margin-bottom: 0.5rem;
+  color: #feefd5;
+}
+
+@import "./headers/header.scss";
+@import "./headers/hud.scss";
+@import "./headers/fui.scss";
+@import "./headers/active-text.scss";

@@ -1,3 +1,7 @@
 export default function MainPage() {
-  return <>Main page - {import.meta.env.VITE_BUNGIE_API_AUTHURL}</>;
+  return (
+    <>
+      Main page - <a href={import.meta.env.VITE_BUNGIE_API_AUTHURL}>Log in</a>
+    </>
+  );
 }

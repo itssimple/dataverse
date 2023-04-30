@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, splitVendorChunkPlugin } from "vite";
 import preact from "@preact/preset-vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
@@ -12,6 +12,7 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       preact(),
+      splitVendorChunkPlugin(),
       sentryVitePlugin({
         org: "its-simple-studios",
         project: "dataverse",

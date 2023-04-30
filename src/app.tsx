@@ -1,16 +1,21 @@
 import { Router } from "preact-router";
+import { Fragment } from "preact/jsx-runtime";
 import "./app.css";
 import MainPage from "./pages/main-page";
 
 export function App() {
   return (
-    <div class="app">
-      <Router>
-        <div path="/">
-          <MainPage />
-        </div>
-        <div path="/authenticated">Authenticated</div>
-      </Router>
-    </div>
+    <>
+      <header className="header tooltip">Dataverse</header>
+      <div class="app">
+        <Router>
+          <Fragment path="/">
+            <MainPage />
+          </Fragment>
+          <div path="/authenticated">Authenticated</div>
+        </Router>
+      </div>
+      <footer className="fui body fiction">© 2023 NoLifeKing85#2914</footer>
+    </>
   );
 }
