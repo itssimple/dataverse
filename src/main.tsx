@@ -1,5 +1,8 @@
-import { render } from 'preact'
-import { App } from './app'
-import './index.css'
+import { render } from "preact";
+import { log } from "./scripts/log";
+import { App } from "./app";
+import "./index.css";
 
-render(<App />, document.getElementById('app') as HTMLElement)
+log("MAIN", "Starting app...");
+
+render(<App />, document.getElementById("app") as HTMLElement);

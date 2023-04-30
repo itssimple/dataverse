@@ -1,12 +1,13 @@
-import Router from "preact-router";
+import { Router } from "preact-router";
 import "./app.css";
+import MainPage from "./pages/main-page";
 
 export function App() {
   return (
     <div class="app">
       <Router>
         <div path="/">
-          Main page - {import.meta.env.VITE_BUNGIE_API_AUTHURL}
+          <MainPage />
         </div>
         <div path="/authenticated">Authenticated</div>
       </Router>
