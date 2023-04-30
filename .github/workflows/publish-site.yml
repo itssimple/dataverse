@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+env:
+  VITE_BUNGIE_API_KEY: ${{ secrets.VITE_BUNGIE_API_KEY }}
+  VITE_BUNGIE_API_AUTHURL: ${{ secrets.VITE_BUNGIE_API_AUTHURL }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
 jobs:
   deploy:
     name: Deploy to GitHub Pages
