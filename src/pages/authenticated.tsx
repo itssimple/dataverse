@@ -1,11 +1,9 @@
 import { getCurrentUrl } from "preact-router";
 import { log } from "../scripts/log";
 
-const db = window.db;
-const eventEmitter = window.eventEmitter;
-const apiClient = window.apiClient;
-
 export default function Authenticated() {
+  const apiClient = window.apiClient;
+
   const url = getCurrentUrl();
   log("Auth", "Authenticated page, getting code", url);
   const authUrl = new URL(url, location.origin).searchParams;
