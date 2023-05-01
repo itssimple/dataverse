@@ -3,6 +3,9 @@ import { Fragment } from "preact/jsx-runtime";
 import { createHashHistory } from "history";
 import "./app.css";
 import MainPage from "./pages/main-page";
+import Authenticated from "./pages/authenticated";
+import Dashboard from "./pages/dashboard";
+import { Footer } from "./components/footer";
 
 export function App() {
   return (
@@ -13,10 +16,15 @@ export function App() {
           <Fragment path="/">
             <MainPage />
           </Fragment>
-          <div path="/authenticated">Authenticated</div>
+          <Fragment path="/authenticated">
+            <Authenticated />
+          </Fragment>
+          <Fragment path="/dashboard">
+            <Dashboard />
+          </Fragment>
         </Router>
       </div>
-      <footer className="fui body fiction">© 2023 NoLifeKing85#2914</footer>
+      <Footer />
     </>
   );
 }

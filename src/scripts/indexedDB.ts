@@ -3,12 +3,17 @@ export class Destiny2Database {
   DBInstance: IDBDatabase | null;
   initializeDatabase: () => Promise<void>;
   setItem: (key: string, value: any) => Promise<void>;
+  setItems: (items: { key: string; value: any }[]) => Promise<void>;
   getItem: (key: string, defaultValue?: null) => Promise<any>;
   removeItem: (key: string) => Promise<void>;
   setStorageItem: (
     storageName: string,
     key: string,
     value: any
+  ) => Promise<void>;
+  setStorageItems: (
+    storageName: string,
+    items: { key: string; value: any }[]
   ) => Promise<void>;
   getStorageItem: (
     storageName: string,
@@ -167,6 +172,12 @@ export class Destiny2Database {
       return await _setItem("storage", key, value);
     };
 
+    this.setItems = async function (items: { key: string; value: any }[]) {
+      for (let item of items) {
+        await _setItem("storage", item.key, item.value);
+      }
+    };
+
     this.getItem = async function (
       key: string,
       defaultValue: any | null = null
@@ -184,6 +195,15 @@ export class Destiny2Database {
       value: any | null
     ) {
       return await _setItem(storageName, key, value);
+    };
+
+    this.setStorageItems = async function (
+      storageName: string,
+      items: { key: string; value: any }[]
+    ) {
+      for (let item of items) {
+        await _setItem(storageName, item.key, item.value);
+      }
     };
 
     this.getStorageItem = async function (
