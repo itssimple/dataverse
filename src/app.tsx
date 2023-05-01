@@ -1,5 +1,6 @@
 import { Router } from "preact-router";
 import { Fragment } from "preact/jsx-runtime";
+import { createHashHistory } from "history";
 import "./app.css";
 import MainPage from "./pages/main-page";
 
@@ -8,7 +9,7 @@ export function App() {
     <>
       <header className="header tooltip">Dataverse</header>
       <div class="app">
-        <Router>
+        <Router history={createHashHistory()}>
           <Fragment path="/">
             <MainPage />
           </Fragment>
