@@ -9,6 +9,8 @@ env:
   VITE_BUNGIE_API_KEY: ${{ secrets.VITE_BUNGIE_API_KEY }}
   VITE_BUNGIE_API_AUTHURL: ${{ secrets.VITE_BUNGIE_API_AUTHURL }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  VITE_BUNGIE_API_APP: ${{ secrets.VITE_BUNGIE_API_APP }}
+  VITE_SENTRY_SCRIPT: ${{ secrets.VITE_SENTRY_SCRIPT }}
 
 concurrency:
   group: "dataverse-app"
