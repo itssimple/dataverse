@@ -5,6 +5,7 @@ export class Destiny2ApiClient {
   getToken: (state: string, code: string) => Promise<any>;
   refreshToken: () => Promise<any>;
   apiToken: string;
+  applicationName: string;
 
   constructor(apiToken: string, appName: string) {
     log("Destiny2ApiClient", "Initializing");
@@ -16,7 +17,7 @@ export class Destiny2ApiClient {
     const destinyBaseUrl = "https://www.bungie.net";
     const destinyApiUrl = "https://www.bungie.net/Platform";
 
-    let appServiceName = appName;
+    this.applicationName = appName;
 
     this.apiToken = apiToken;
 
@@ -111,7 +112,7 @@ export class Destiny2ApiClient {
     this.getToken = async (state: string, code: string) => {
       const tokenRequest = await callUrl(
         "POST",
-        `${authGatewayUrl}/token/${appServiceName}`,
+        `${authGatewayUrl}/token/${self.applicationName}`,
         JSON.stringify({
           code: code,
         })
@@ -146,7 +147,7 @@ export class Destiny2ApiClient {
 
       const tokenRequest = await callUrl(
         "POST",
-        `${authGatewayUrl}/refresh/${appServiceName}`,
+        `${authGatewayUrl}/refresh/${self.applicationName}`,
         JSON.stringify({
           refresh_token: refreshToken,
         })
