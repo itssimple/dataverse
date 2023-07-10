@@ -7,7 +7,8 @@ import Authenticated from "./pages/authenticated";
 import Dashboard from "./pages/dashboard";
 import { Footer } from "./components/footer";
 
-export function App() {
+export function App(props: { authenticated: boolean }) {
+  console.log(props);
   return (
     <>
       <header className="header tooltip">Dataverse</header>

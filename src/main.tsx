@@ -27,6 +27,12 @@ window.apiClient = new Destiny2ApiClient(
 
 window.db.initializeDatabase().then(async () => {
   log("MAIN", "Database initialized, checking for updates...");
-});
 
-render(<App />, document.getElementById("app") as HTMLElement);
+  // Check if the user is authenticated or not
+  const isAuthenticated = await window.apiClient.checkIfAuthenticated();
+
+  render(
+    <App authenticated={isAuthenticated} />,
+    document.getElementById("app") as HTMLElement
+  );
+});
