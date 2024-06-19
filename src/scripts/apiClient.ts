@@ -4,6 +4,8 @@ export class Destiny2ApiClient {
   checkIfAuthenticated: () => Promise<boolean>;
   getToken: (state: string, code: string) => Promise<any>;
   refreshToken: () => Promise<any>;
+  checkManifestVersion: () => Promise<unknown>;
+
   apiToken: string;
   applicationName: string;
 
@@ -17,9 +19,54 @@ export class Destiny2ApiClient {
     const destinyBaseUrl = "https://www.bungie.net";
     const destinyApiUrl = "https://www.bungie.net/Platform";
 
+    const maxActivitiesPerFetch = 250;
+
+    /**
+     * @description The datatypes we are interested in.
+     */
+    const destinyDataTypes = [
+      "DestinyActivityTypeDefinition",
+      "DestinyActivityDefinition",
+      "DestinyArtifactDefinition",
+      "DestinyChecklistDefinition",
+      "DestinyClassDefinition",
+      "DestinyDestinationDefinition",
+      "DestinyDamageTypeDefinition",
+      "DestinyFactionDefinition",
+      "DestinyGenderDefinition",
+      "DestinyItemCategoryDefinition",
+      "DestinyItemTierTypeDefinition",
+      "DestinyInventoryBucketDefinition",
+      "DestinyInventoryItemDefinition",
+      "DestinyMedalTierDefinition",
+      "DestinyMetricDefinition",
+      "DestinyMilestoneDefinition",
+      "DestinyObjectiveDefinition",
+      "DestinyPlaceDefinition",
+      "DestinyPresentationNodeDefinition",
+      "DestinyProgressionDefinition",
+      "DestinyRaceDefinition",
+      "DestinyRecordDefinition",
+      "DestinySeasonDefinition",
+      "DestinySeasonPassDefinition",
+      "DestinyStatDefinition",
+      "DestinyTraitDefinition",
+    ];
+
+    const DestinyItemState = {
+      None: 0,
+      Locked: 1,
+      Tracked: 2,
+      Masterwork: 4,
+    };
+
     this.applicationName = appName;
 
     this.apiToken = apiToken;
+
+    function _log(...params: any[]) {
+      log("Destiny2ApiClient", params);
+    }
 
     async function callUrl(
       method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
@@ -54,7 +101,7 @@ export class Destiny2ApiClient {
       const tokenExpires = await db.getItem("destinyTokenExpires");
 
       if (tokenExpires < Date.now()) {
-        log("Destiny2ApiClient", "Token expired, refreshing");
+        _log("Token expired, refreshing");
         await self.refreshToken();
       }
     }
@@ -62,11 +109,7 @@ export class Destiny2ApiClient {
     function handleTokenResponse(tokenResponse: any) {
       // Check if tokenResponse contains a property called error, and if so, log the error and return
       if (tokenResponse.error) {
-        log(
-          "Destiny2ApiClient",
-          "Error handling token",
-          JSON.stringify(tokenResponse)
-        );
+        _log("Error handling token", JSON.stringify(tokenResponse));
 
         db.removeItem("destinyToken");
         db.removeItem("destinyRefreshToken");
@@ -103,7 +146,7 @@ export class Destiny2ApiClient {
         eventEmitter.emit("destiny2:authenticated", isAuthenticated);
         return isAuthenticated;
       } catch (e) {
-        log("Destiny2ApiClient", "Error checking if authenticated", e);
+        _log("Error checking if authenticated", e);
         eventEmitter.emit("destiny2:authenticated", false);
         return false;
       }
@@ -128,8 +171,7 @@ export class Destiny2ApiClient {
         }
         return tokenResponse;
       }
-      log(
-        "Destiny2ApiClient",
+      _log(
         "Error getting token",
         tokenRequest.status,
         tokenRequest.statusText,
@@ -168,9 +210,11 @@ export class Destiny2ApiClient {
       }
     };
 
+    this.checkManifestVersion = async () => {};
+
     let self = this;
 
-    log("Destiny2ApiClient", "Initialized");
+    _log("Initialized");
     return this;
   }
 }

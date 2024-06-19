@@ -22,7 +22,7 @@ export default function Authenticated() {
     .getToken("", code)
     .then(() => {
       log("Auth", "Got token, redirecting to dashboard");
-      location.href = "/#/dashboard";
+      location.href = "/#/logging-in";
     })
     .catch((err) => {
       log("Auth", "Failed to get token, redirecting to main page");

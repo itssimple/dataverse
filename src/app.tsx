@@ -6,19 +6,22 @@ import MainPage from "./pages/main-page";
 import Authenticated from "./pages/authenticated";
 import Dashboard from "./pages/dashboard";
 import { Footer } from "./components/footer";
+import LoggingIn from "./pages/logging-in";
 
 export function App(props: { authenticated: boolean }) {
-  console.log(props);
   return (
     <>
-      <header className="header tooltip">Dataverse</header>
+      <header className="header subscreen">Dataverse</header>
       <div class="app">
         <Router history={createHashHistory()}>
           <Fragment path="/">
-            <MainPage />
+            <MainPage {...props} />
           </Fragment>
           <Fragment path="/authenticated">
             <Authenticated />
+          </Fragment>
+          <Fragment path="/logging-in">
+            <LoggingIn />
           </Fragment>
           <Fragment path="/dashboard">
             <Dashboard />
