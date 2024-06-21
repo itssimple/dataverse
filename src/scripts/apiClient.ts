@@ -5,9 +5,17 @@ export class Destiny2ApiClient {
   getToken: (state: string, code: string) => Promise<any>;
   refreshToken: () => Promise<any>;
   checkManifestVersion: () => Promise<unknown>;
+  checkStoredDefinitions: (downloadMissingDefinitions?: boolean) => Promise<string[]>;
+  loadDestinyContentData: () => Promise<void>;
 
   apiToken: string;
   applicationName: string;
+  cachedManifest: any;
+  destinyDataDefinition: {};
+  lastVersion: string | null;
+  getManifest: () => Promise<{
+    Response: any;
+  } | null>;
 
   constructor(apiToken: string, appName: string) {
     log("Destiny2ApiClient", "Initializing");
@@ -60,9 +68,13 @@ export class Destiny2ApiClient {
       Masterwork: 4,
     };
 
+    this.lastVersion = null;
+
     this.applicationName = appName;
 
     this.apiToken = apiToken;
+
+    this.destinyDataDefinition = {};
 
     function _log(...params: any[]) {
       log("Destiny2ApiClient", params);
@@ -210,7 +222,129 @@ export class Destiny2ApiClient {
       }
     };
 
-    this.checkManifestVersion = async () => {};
+    this.checkManifestVersion = async () => {
+      _log("Checking manifest version");
+      return new Promise(async function (resolve, reject) {
+        let manifest = await self.getManifest();
+
+        if (manifest == null) {
+          log("D2API", "Failed to fetch API");
+          return null;
+        }
+
+        let lastVersion = (await db.getItem("manifestVersion")) ?? "null";
+        if (manifest.Response.version !== lastVersion) {
+          /* Currently cached data is older than 60 minutes, so we clear it. */
+          await db.removeItem("lastManifestUpdate");
+          await db.removeItem("manifest");
+          await db.removeItem("manifestVersion");
+
+          for (let dataType of destinyDataTypes) {
+            await db.removeItem(`destinyContent-${dataType}`);
+          }
+
+          self.cachedManifest = manifest.Response;
+
+          await db.setItem("manifestVersion", manifest.Response.version);
+          await db.setItem("manifest", JSON.stringify(self.cachedManifest));
+          await db.setItem("lastManifestUpdate", Date.now());
+
+          resolve({ updatedManifest: true, version: self.lastVersion });
+          _log("Manifest updated");
+          return;
+        }
+
+        self.cachedManifest = manifest.Response;
+
+        resolve({ updatedManifest: false, version: self.lastVersion });
+        _log("Manifest version is up to date");
+      });
+    };
+
+    this.checkStoredDefinitions = async function (downloadMissingDefinitions = true) {
+      let missingDefinitions: string[] = [];
+
+      for (let dataType of destinyDataTypes) {
+        if ((await db.getItem(`destinyContent-${dataType}`)) === null) {
+          missingDefinitions.push(dataType);
+        }
+      }
+
+      if (missingDefinitions.length > 0 && downloadMissingDefinitions) {
+        for (let dataType of missingDefinitions) {
+          await db.removeItem(`destinyContent-${dataType}`);
+        }
+
+        await self.loadDestinyContentData();
+      }
+
+      return missingDefinitions;
+    };
+
+    this.loadDestinyContentData = async function () {
+      for (let dataType of destinyDataTypes) {
+        await loadDestinyContentDataType(dataType);
+      }
+    };
+
+    async function loadDestinyContentDataType(dataType: string) {
+      let manifest = self.cachedManifest;
+
+      eventEmitter.emit("loading-text", `Loading ${dataType.replace("Destiny", "")}`);
+
+      const contentTypeDownload = await callUrl(
+        "GET",
+        `${destinyBaseUrl}${manifest.jsonWorldComponentContentPaths.en[dataType]}`
+      );
+
+      if (contentTypeDownload.status !== 200) {
+        log("Manifest download error", await contentTypeDownload.json());
+        return;
+      }
+
+      const contentTypeJson = await contentTypeDownload.json();
+
+      self.destinyDataDefinition[dataType] = contentTypeJson;
+      db.setItem(`destinyContent-${dataType}`, JSON.stringify(contentTypeJson));
+    }
+
+    this.getManifest = async function (): Promise<{
+      Response: any;
+    } | null> {
+      let lastManifestUpdate = await db.getItem("lastManifestUpdate");
+      _log("Checking if manifest is cached");
+
+      if (lastManifestUpdate !== null && Date.now() - lastManifestUpdate < 60000 * 60) {
+        if ((await db.getItem("manifest")) !== null) {
+          _log("Manifest is cached");
+          return { Response: JSON.parse(await db.getItem("manifest")) };
+        }
+      }
+
+      let manifestRequest = await callUrl("GET", `${destinyApiUrl}/Destiny2/Manifest/`);
+
+      if (manifestRequest.status === 200) {
+        let manifest = await manifestRequest.json();
+        if (manifest.ErrorStatus == "Success") {
+          db.setItem("lastManifestUpdate", Date.now());
+          db.setItem("manifest", JSON.stringify(manifest.Response));
+          _log("Manifest updated");
+
+          return { Response: manifest.Response };
+        } else {
+          _log("Manifesterror");
+          _log(manifest.Response);
+
+          return null;
+        }
+      } else {
+        let responseText = manifestRequest.json();
+        _log("Error when fetching Manifest");
+        _log(responseText);
+
+        return null;
+      }
+    };
 
     let self = this;
 
