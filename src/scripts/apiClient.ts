@@ -4,20 +4,26 @@ export class Destiny2ApiClient {
   checkIfAuthenticated: () => Promise<boolean>;
   getToken: (state: string, code: string) => Promise<any>;
   refreshToken: () => Promise<any>;
-  checkManifestVersion: () => Promise<unknown>;
+  checkManifestVersion: () => Promise<{
+    updatedManifest: boolean;
+    version: string | null;
+  }> | null;
   checkStoredDefinitions: (
     downloadMissingDefinitions?: boolean
   ) => Promise<string[]>;
-  loadDestinyContentData: () => Promise<void>;
+  loadDestinyContentData: (definitions: string[]) => Promise<void>;
+  loadDataFromStorage: () => Promise<void>;
+  getManifest: () => Promise<{
+    Response: any;
+  } | null>;
 
   apiToken: string;
   applicationName: string;
   cachedManifest: any;
   destinyDataDefinition: { [key: string]: any };
   lastVersion: string | null;
-  getManifest: () => Promise<{
-    Response: any;
-  } | null>;
+  profile: any | null;
+  linkedProfiles: any | null;
 
   constructor(apiToken: string, appName: string) {
     _log("Initializing");
@@ -88,12 +94,12 @@ export class Destiny2ApiClient {
       body: any | null = null,
       authorization: any | null = null
     ) {
-      let headers : RequestInit["headers"] = {};
+      let headers: RequestInit["headers"] = {};
 
-      if(body !== null) {
+      if (body !== null) {
         headers["Content-Type"] = "application/json";
         headers["x-api-key"] = self.apiToken;
-        if(authorization !== null) {
+        if (authorization !== null) {
           headers.authorization = `Bearer ${authorization}`;
         }
       }
@@ -102,12 +108,12 @@ export class Destiny2ApiClient {
         return await fetch(url, {
           method: method,
           headers: headers,
-          body: body
+          body: body,
         });
       } else {
         return await fetch(url, {
           method: method,
-          headers: headers
+          headers: headers,
         });
       }
     }
@@ -153,6 +159,42 @@ export class Destiny2ApiClient {
 
       return true;
     }
+
+    this.loadDataFromStorage = async () => {
+      _log("Loading data from storage");
+
+      let _cachedManifest = await db.getItem("manifest");
+      if (_cachedManifest !== null) {
+        self.cachedManifest = JSON.parse(_cachedManifest);
+      }
+
+      let _cachedManifestVersion = await db.getItem("manifestVersion");
+      if (_cachedManifestVersion !== null) {
+        self.lastVersion = _cachedManifestVersion;
+      }
+
+      self.checkStoredDefinitions();
+
+      for (let dataType of destinyDataTypes) {
+        let _cachedData = await db.getItem(`destinyContent-${dataType}`);
+        if (_cachedData !== null) {
+          self.destinyDataDefinition[dataType] = JSON.parse(_cachedData);
+        }
+      }
+
+      let _profile = await db.getItem("destiny-profile");
+      if (_profile !== null) {
+        self.profile = JSON.parse(_profile);
+      }
+
+      let _linkedProfiles = await db.getItem("destiny-linkedProfiles");
+      if (_linkedProfiles !== null) {
+        self.linkedProfiles = JSON.parse(_linkedProfiles);
+      }
+
+      _log("Data loaded from storage");
+      eventEmitter.emit("destiny-data-loaded");
+    };
 
     this.checkIfAuthenticated = async () => {
       try {
@@ -236,6 +278,8 @@ export class Destiny2ApiClient {
         }
 
         let lastVersion = (await db.getItem("manifestVersion")) ?? "null";
+
+        console.log(manifest, lastVersion);
         if (manifest.Response.version !== lastVersion) {
           /* Currently cached data is older than 60 minutes, so we clear it. */
           await db.removeItem("lastManifestUpdate");
@@ -270,7 +314,8 @@ export class Destiny2ApiClient {
       let missingDefinitions: string[] = [];
 
       for (let dataType of destinyDataTypes) {
-        if ((await db.getItem(`destinyContent-${dataType}`)) === null) {
+        let data = await db.getItem(`destinyContent-${dataType}`);
+        if (data === null) {
           missingDefinitions.push(dataType);
         }
       }
@@ -280,14 +325,14 @@ export class Destiny2ApiClient {
           await db.removeItem(`destinyContent-${dataType}`);
         }
 
-        await self.loadDestinyContentData();
+        await self.loadDestinyContentData(missingDefinitions);
       }
 
       return missingDefinitions;
     };
 
-    this.loadDestinyContentData = async function () {
-      for (let dataType of destinyDataTypes) {
+    this.loadDestinyContentData = async function (definitions: string[] = []) {
+      for (let dataType of definitions) {
         await loadDestinyContentDataType(dataType);
       }
     };
@@ -295,10 +340,12 @@ export class Destiny2ApiClient {
     async function loadDestinyContentDataType(dataType: string) {
       let manifest = self.cachedManifest;
 
-      eventEmitter.emit(
-        "loading-text",
-        `Loading ${dataType.replace("Destiny", "")}`
-      );
+      const dataTypeWords = dataType
+        .replace("Destiny", "")
+        .split(/(?=[A-Z])/)
+        .join(" ");
+
+      eventEmitter.emit("loading-text", `Loading ${dataTypeWords}`);
 
       const contentTypeDownload = await callUrl(
         "GET",
@@ -326,9 +373,10 @@ export class Destiny2ApiClient {
         lastManifestUpdate !== null &&
         Date.now() - lastManifestUpdate < 60000 * 60
       ) {
-        if ((await db.getItem("manifest")) !== null) {
+        let _manifest = await db.getItem("manifest");
+        if (_manifest !== null) {
           _log("Manifest is cached");
-          return { Response: JSON.parse(await db.getItem("manifest")) };
+          return { Response: JSON.parse(_manifest) };
         }
       }
 
