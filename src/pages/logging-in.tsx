@@ -1,6 +1,8 @@
+import { Signal } from "@preact/signals";
 import { log } from "../scripts/log";
+import { D2AppState } from "../classes/appState";
 
-export default function LoggingIn() {
+export default function LoggingIn(props: D2AppState) {
   const apiClient = window.apiClient;
 
   const eventEmitter = window.eventEmitter;
@@ -52,9 +54,15 @@ export default function LoggingIn() {
     await apiClient.loadDataFromStorage();
     setLoadingText("Loading data... done");
 
+    props.isDataLoaded.value = true;
+
     setTimeout(() => {
       setLoadingText("Opening application...");
       eventEmitter.emit("manifests-loaded");
+
+      setTimeout(() => {
+        location.href = "/#/dashboard";
+      }, 1000);
     }, 1000);
   });
 

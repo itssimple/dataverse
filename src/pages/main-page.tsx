@@ -1,6 +1,7 @@
-export default function MainPage(props: { authenticated: boolean }) {
-  if (props.authenticated) {
-    // User is supposedly logged in, redirecting to login page to check auth and manifest
+import { D2AppState } from "../classes/appState";
+
+export default function MainPage(props: D2AppState) {
+  if (props.isAuthenticated) {
     location.href = "/#/logging-in";
     return <></>;
   }

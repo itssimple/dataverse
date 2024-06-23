@@ -1,4 +1,5 @@
-import { render } from "preact";
+import { render, createContext, Context } from "preact";
+import { signal } from "@preact/signals";
 import { log } from "./scripts/log";
 import { App } from "./app";
 import { Destiny2Database } from "./scripts/indexedDB";
@@ -7,13 +8,14 @@ import { Destiny2ApiClient } from "./scripts/apiClient";
 import "./assets/fonts/style.css";
 import "./index.css";
 import "./styles/main.scss";
+import { D2AppState } from "./classes/appState";
 
 declare global {
   interface Window {
     db: Destiny2Database;
     eventEmitter: EventEmitter;
     apiClient: Destiny2ApiClient;
-    appUrl: string;
+    appState: Context<D2AppState>;
   }
 }
 
@@ -26,13 +28,23 @@ window.apiClient = new Destiny2ApiClient(
   import.meta.env.VITE_BUNGIE_API_APP
 );
 
+function createAppState(): D2AppState {
+  const isDataLoaded = signal(false);
+  const isAuthenticated = signal(false);
+
+  return {
+    isDataLoaded,
+    isAuthenticated,
+  };
+}
+
+const state = createAppState();
+
+window.appState = createContext(state);
 window.db.initializeDatabase().then(async () => {
   log("MAIN", "Database initialized, checking for updates...");
 
-  const isAuthenticated = await window.apiClient.checkIfAuthenticated();
+  state.isAuthenticated.value = await window.apiClient.checkIfAuthenticated();
 
-  render(
-    <App authenticated={isAuthenticated} />,
-    document.getElementById("app") as HTMLElement
-  );
+  render(<App />, document.getElementById("app") as HTMLElement);
 });

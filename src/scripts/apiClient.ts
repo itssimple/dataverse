@@ -16,6 +16,8 @@ export class Destiny2ApiClient {
   getManifest: () => Promise<{
     Response: any;
   } | null>;
+  loadCommonSettings: () => Promise<any>;
+  getUserToken: () => Promise<string | null>;
 
   apiToken: string;
   applicationName: string;
@@ -352,12 +354,41 @@ export class Destiny2ApiClient {
         `${destinyBaseUrl}${manifest.jsonWorldComponentContentPaths.en[dataType]}`
       );
 
+      const contentLength = contentTypeDownload.headers.get("content-length");
+
+      const total = parseInt(contentLength || "0", 10);
+      let loaded = 0;
+
+      const res = new Response(
+        new ReadableStream({
+          async start(controller) {
+            const reader = contentTypeDownload.body!.getReader();
+            for (;;) {
+              var r = await reader!.read();
+              if (r!.done) {
+                break;
+              }
+              loaded += r!.value.byteLength;
+
+              eventEmitter.emit(
+                "loading-text",
+                `Loading ${dataTypeWords} (${new Intl.NumberFormat(
+                  "sv-SE"
+                ).format(loaded / 1024 / 1024)} MB)`
+              );
+              controller.enqueue(r!.value);
+            }
+            controller.close();
+          },
+        })
+      );
+
       if (contentTypeDownload.status !== 200) {
-        log("Manifest download error", await contentTypeDownload.json());
+        log("Manifest download error", await res.json());
         return;
       }
 
-      const contentTypeJson = await contentTypeDownload.json();
+      const contentTypeJson = await res.json();
 
       self.destinyDataDefinition[dataType] = contentTypeJson;
       db.setItem(`destinyContent-${dataType}`, JSON.stringify(contentTypeJson));
@@ -406,6 +437,31 @@ export class Destiny2ApiClient {
 
         return null;
       }
+    };
+
+    this.loadCommonSettings = async function () {
+      await refreshTokenIfExpired();
+
+      const settings = await callUrl(
+        "GET",
+        `${destinyApiUrl}/Settings`,
+        null,
+        await this.getUserToken()
+      );
+      if (settings.status === 200) {
+        return await settings.json();
+      }
+
+      _log(
+        "Error fetching common settings",
+        settings.status,
+        settings.statusText
+      );
+      return null;
+    };
+
+    this.getUserToken = async function () {
+      return await db.getItem("destinyToken");
     };
 
     let self = this;

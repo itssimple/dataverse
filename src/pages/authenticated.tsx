@@ -10,8 +10,6 @@ export default function Authenticated() {
 
   const code = authUrl.get("code");
 
-  log("Auth", "Code", code);
-
   if (!code) {
     log("Auth", "No code found, redirecting to main page");
     location.href = "/";

@@ -7,24 +7,26 @@ import Authenticated from "./pages/authenticated";
 import Dashboard from "./pages/dashboard";
 import { Footer } from "./components/footer";
 import LoggingIn from "./pages/logging-in";
+import { useContext } from "preact/hooks";
 
-export function App(props: { authenticated: boolean }) {
+export function App() {
+  const state = useContext(window.appState);
   return (
     <>
       <header className="header subscreen">Dataverse</header>
       <div class="app">
         <Router history={createHashHistory()}>
           <Fragment path="/">
-            <MainPage {...props} />
+            <MainPage {...state} />
           </Fragment>
           <Fragment path="/authenticated">
             <Authenticated />
           </Fragment>
           <Fragment path="/logging-in">
-            <LoggingIn />
+            <LoggingIn {...state} />
           </Fragment>
           <Fragment path="/dashboard">
-            <Dashboard />
+            <Dashboard {...state} />
           </Fragment>
         </Router>
       </div>

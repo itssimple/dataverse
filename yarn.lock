@@ -581,6 +581,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@preact/signals-core@npm:^1.6.0":
+  version: 1.6.1
+  resolution: "@preact/signals-core@npm:1.6.1"
+  checksum: 502a52e04107c48d578b3827cff39ca179b3742d18bba1805ee742f908bf88b19e80b3abebd4d326329c268316bde083f54d9cf99c2419775de48e9756668e6a
+  languageName: node
+  linkType: hard
+
+"@preact/signals@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@preact/signals@npm:1.2.3"
+  dependencies:
+    "@preact/signals-core": ^1.6.0
+  peerDependencies:
+    preact: 10.x
+  checksum: efd1b9dd66b47bb08a328d1fb6a1d84514415b8f4a330b9aff2dd1c7bf33bbc67136ad6c2c40021c4b10c3796a63fdf65e3105993220f899c7a35210808d1a36
+  languageName: node
+  linkType: hard
+
 "@prefresh/babel-plugin@npm:0.4.4":
   version: 0.4.4
   resolution: "@prefresh/babel-plugin@npm:0.4.4"
@@ -1089,6 +1107,7 @@ __metadata:
   resolution: "dataverse@workspace:."
   dependencies:
     "@preact/preset-vite": ^2.5.0
+    "@preact/signals": ^1.2.3
     "@sentry/vite-plugin": ^0.7.2
     "@types/history": 4.6.1
     "@types/node": ^18.16.3
