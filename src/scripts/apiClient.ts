@@ -20,7 +20,7 @@ export class Destiny2ApiClient {
   } | null>;
 
   constructor(apiToken: string, appName: string) {
-    log("Destiny2ApiClient", "Initializing");
+    _log("Initializing");
 
     const db = window.db;
     const eventEmitter = window.eventEmitter;
@@ -79,7 +79,7 @@ export class Destiny2ApiClient {
     this.destinyDataDefinition = {};
 
     function _log(...params: any[]) {
-      log("Destiny2ApiClient", params);
+      log("D2API", params);
     }
 
     async function callUrl(
@@ -88,25 +88,26 @@ export class Destiny2ApiClient {
       body: any | null = null,
       authorization: any | null = null
     ) {
+      let headers : RequestInit["headers"] = {};
+
+      if(body !== null) {
+        headers["Content-Type"] = "application/json";
+        headers["x-api-key"] = self.apiToken;
+        if(authorization !== null) {
+          headers.authorization = `Bearer ${authorization}`;
+        }
+      }
+
       if (body !== null) {
         return await fetch(url, {
           method: method,
-          headers: {
-            "x-api-key": self.apiToken,
-            authorization:
-              authorization != null ? `Bearer ${authorization}` : "",
-            "Content-Type": "application/json",
-          },
-          body: body,
+          headers: headers,
+          body: body
         });
       } else {
         return await fetch(url, {
           method: method,
-          headers: {
-            "x-api-key": self.apiToken,
-            authorization:
-              authorization != null ? `Bearer ${authorization}` : "",
-          },
+          headers: headers
         });
       }
     }
@@ -230,7 +231,7 @@ export class Destiny2ApiClient {
         let manifest = await self.getManifest();
 
         if (manifest == null) {
-          log("D2API", "Failed to fetch API");
+          _log("Failed to fetch API");
           return null;
         }
 
@@ -341,7 +342,7 @@ export class Destiny2ApiClient {
         if (manifest.ErrorStatus == "Success") {
           db.setItem("lastManifestUpdate", Date.now());
           db.setItem("manifest", JSON.stringify(manifest.Response));
-          _log("Manifest updated");
+          _log("Manifest updated from API");
 
           return { Response: manifest.Response };
         } else {

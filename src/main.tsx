@@ -13,6 +13,7 @@ declare global {
     db: Destiny2Database;
     eventEmitter: EventEmitter;
     apiClient: Destiny2ApiClient;
+    appUrl: string;
   }
 }
 
