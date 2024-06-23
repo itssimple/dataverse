@@ -5,13 +5,15 @@ export class Destiny2ApiClient {
   getToken: (state: string, code: string) => Promise<any>;
   refreshToken: () => Promise<any>;
   checkManifestVersion: () => Promise<unknown>;
-  checkStoredDefinitions: (downloadMissingDefinitions?: boolean) => Promise<string[]>;
+  checkStoredDefinitions: (
+    downloadMissingDefinitions?: boolean
+  ) => Promise<string[]>;
   loadDestinyContentData: () => Promise<void>;
 
   apiToken: string;
   applicationName: string;
   cachedManifest: any;
-  destinyDataDefinition: {};
+  destinyDataDefinition: { [key: string]: any };
   lastVersion: string | null;
   getManifest: () => Promise<{
     Response: any;
@@ -261,7 +263,9 @@ export class Destiny2ApiClient {
       });
     };
 
-    this.checkStoredDefinitions = async function (downloadMissingDefinitions = true) {
+    this.checkStoredDefinitions = async function (
+      downloadMissingDefinitions = true
+    ) {
       let missingDefinitions: string[] = [];
 
       for (let dataType of destinyDataTypes) {
@@ -290,7 +294,10 @@ export class Destiny2ApiClient {
     async function loadDestinyContentDataType(dataType: string) {
       let manifest = self.cachedManifest;
 
-      eventEmitter.emit("loading-text", `Loading ${dataType.replace("Destiny", "")}`);
+      eventEmitter.emit(
+        "loading-text",
+        `Loading ${dataType.replace("Destiny", "")}`
+      );
 
       const contentTypeDownload = await callUrl(
         "GET",
@@ -314,14 +321,20 @@ export class Destiny2ApiClient {
       let lastManifestUpdate = await db.getItem("lastManifestUpdate");
       _log("Checking if manifest is cached");
 
-      if (lastManifestUpdate !== null && Date.now() - lastManifestUpdate < 60000 * 60) {
+      if (
+        lastManifestUpdate !== null &&
+        Date.now() - lastManifestUpdate < 60000 * 60
+      ) {
         if ((await db.getItem("manifest")) !== null) {
           _log("Manifest is cached");
           return { Response: JSON.parse(await db.getItem("manifest")) };
         }
       }
 
-      let manifestRequest = await callUrl("GET", `${destinyApiUrl}/Destiny2/Manifest/`);
+      let manifestRequest = await callUrl(
+        "GET",
+        `${destinyApiUrl}/Destiny2/Manifest/`
+      );
 
       if (manifestRequest.status === 200) {
         let manifest = await manifestRequest.json();
