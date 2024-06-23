@@ -7,7 +7,7 @@ export class Destiny2ApiClient {
   checkManifestVersion: () => Promise<{
     updatedManifest: boolean;
     version: string | null;
-  }> | null;
+  } | null>;
   checkStoredDefinitions: (
     downloadMissingDefinitions?: boolean
   ) => Promise<string[]>;
