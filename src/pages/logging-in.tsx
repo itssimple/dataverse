@@ -41,6 +41,12 @@ export default function LoggingIn(props: D2AppState) {
 
     log("LOGIN", manifestVersion);
 
+    setLoadingText("Loading profile data");
+
+    await apiClient.getLinkedProfiles();
+
+    setLoadingText("Checking for missing definitions");
+
     let missingDefinitions = await apiClient.checkStoredDefinitions(false);
 
     if (missingDefinitions.length > 0) {
@@ -69,7 +75,7 @@ export default function LoggingIn(props: D2AppState) {
   return (
     <>
       <span class="fui body" id="loading-text">
-        ...
+        Logging in and loading data ...
       </span>
     </>
   );

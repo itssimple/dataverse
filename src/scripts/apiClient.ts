@@ -18,6 +18,7 @@ export class Destiny2ApiClient {
   } | null>;
   loadCommonSettings: () => Promise<any>;
   getUserToken: () => Promise<string | null>;
+  getLinkedProfiles: () => Promise<unknown>;
 
   apiToken: string;
   applicationName: string;
@@ -26,7 +27,7 @@ export class Destiny2ApiClient {
   lastVersion: string | null;
   profile: any | null;
   linkedProfiles: any | null;
-
+  
   constructor(apiToken: string, appName: string) {
     _log("Initializing");
 
@@ -98,7 +99,7 @@ export class Destiny2ApiClient {
     ) {
       let headers: RequestInit["headers"] = {};
 
-      if (body !== null) {
+      if (body !== null || authorization !== null) {
         headers["Content-Type"] = "application/json";
         headers["x-api-key"] = self.apiToken;
         if (authorization !== null) {
@@ -363,6 +364,8 @@ export class Destiny2ApiClient {
         new ReadableStream({
           async start(controller) {
             const reader = contentTypeDownload.body!.getReader();
+
+            let progressIndication = 0;
             for (;;) {
               var r = await reader!.read();
               if (r!.done) {
@@ -370,14 +373,24 @@ export class Destiny2ApiClient {
               }
               loaded += r!.value.byteLength;
 
-              eventEmitter.emit(
-                "loading-text",
-                `Loading ${dataTypeWords} (${new Intl.NumberFormat(
-                  "sv-SE"
-                ).format(loaded / 1024 / 1024)} MB)`
-              );
+              progressIndication++;
+              if(progressIndication % 30 === 0) {
+                eventEmitter.emit(
+                  "loading-text",
+                  `Loading ${dataTypeWords} (${new Intl.NumberFormat(
+                    "sv-SE"
+                  ).format(Math.round((loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON) / 100)} MB)`
+                );
+              }
               controller.enqueue(r!.value);
             }
+
+            eventEmitter.emit(
+              "loading-text",
+              `Loading ${dataTypeWords} (${new Intl.NumberFormat(
+                "sv-SE"
+              ).format(Math.round((loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON) / 100)} MB)`
+            );
             controller.close();
           },
         })
@@ -462,6 +475,33 @@ export class Destiny2ApiClient {
 
     this.getUserToken = async function () {
       return await db.getItem("destinyToken");
+    };
+
+    this.getLinkedProfiles = async function () {
+      await refreshTokenIfExpired();
+
+      return new Promise(async (resolve, reject) => {
+        var bnetMemberId = await db.getItem("destinyBungieMembershipId");
+
+        let linkedProfile = await callUrl('GET',
+          `${destinyApiUrl}/Destiny2/-1/Profile/${bnetMemberId}/LinkedProfiles/`,
+          null,
+          await this.getUserToken()
+        );
+        
+        if (linkedProfile.status === 200) {
+          let profiles = await linkedProfile.json();
+
+          db.setItem("destiny-linkedProfiles", JSON.stringify(profiles.Response));
+
+          self.linkedProfiles = profiles.Response;
+
+          resolve(profiles.Response);
+        } else {
+          self.refreshToken();
+          reject(linkedProfile);
+        }
+      });
     };
 
     let self = this;
