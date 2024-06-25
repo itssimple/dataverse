@@ -34,7 +34,7 @@ export default function LoggingIn(props: D2AppState) {
 
     if (manifestVersion === null || manifestVersion === undefined) {
       setLoadingText(
-        "Something is wrong with Destiny 2, please reload the page."
+        "Something is wrong with Destiny 2 (or this app), please reload the page."
       );
       return;
     }
@@ -59,6 +59,9 @@ export default function LoggingIn(props: D2AppState) {
     setLoadingText("Loading data...");
     await apiClient.loadDataFromStorage();
     setLoadingText("Loading data... done");
+
+    setLoadingText("Loading character data...");
+    await apiClient.getLastPlayedCharacter();
 
     props.isDataLoaded.value = true;
 

@@ -4,7 +4,7 @@ export class Destiny2Database {
   initializeDatabase: () => Promise<void>;
   setItem: (key: string, value: any) => Promise<void>;
   setItems: (items: { key: string; value: any }[]) => Promise<void>;
-  getItem: (key: string, defaultValue?: null) => Promise<any>;
+  getItem: (key: string, defaultValue?: any | null) => Promise<any>;
   removeItem: (key: string) => Promise<void>;
   setStorageItem: (
     storageName: string,

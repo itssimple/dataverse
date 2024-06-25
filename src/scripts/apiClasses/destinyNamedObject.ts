@@ -1,0 +1,20 @@
+export type DestinyNamedObject = {
+  characterInfo: any;
+  characterProgression: any;
+  characterActivities: any;
+  characterUninstancedItemComponents: any;
+  characterInventory: any;
+  characterEquipment: any;
+  characterPlugSets: any;
+  characterCollectibles: any;
+  characterRecords: any;
+  profileProgression: any;
+  metrics: any;
+  itemComponents: any;
+  records: any;
+  profileInventory: any;
+  profileCurrency: any;
+  profilePlugSets: any;
+  profileCollectibles: any;
+  profile: any;
+};

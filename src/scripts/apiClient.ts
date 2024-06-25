@@ -1,3 +1,4 @@
+import { DestinyNamedObject } from "./apiClasses/destinyNamedObject";
 import { log } from "./log";
 
 export class Destiny2ApiClient {
@@ -19,6 +20,11 @@ export class Destiny2ApiClient {
   loadCommonSettings: () => Promise<any>;
   getUserToken: () => Promise<string | null>;
   getLinkedProfiles: () => Promise<unknown>;
+  getUserProfile: (
+    membershipId: string,
+    membershipType: number
+  ) => Promise<unknown>;
+  getLastPlayedCharacter: (forceRefresh?: boolean) => Promise<any | null>;
 
   apiToken: string;
   applicationName: string;
@@ -27,7 +33,12 @@ export class Destiny2ApiClient {
   lastVersion: string | null;
   profile: any | null;
   linkedProfiles: any | null;
-  
+  getNamedDataObject: (
+    forceRefresh?: boolean
+  ) => Promise<DestinyNamedObject | null>;
+  getPresentationNodeFromHash: (hash: string) => any[];
+  mapHashesToDefinitionsInObject: (object: any) => any;
+
   constructor(apiToken: string, appName: string) {
     _log("Initializing");
 
@@ -71,6 +82,44 @@ export class Destiny2ApiClient {
       "DestinyStatDefinition",
       "DestinyTraitDefinition",
     ];
+
+    const profileComponents = {
+      None: 0,
+      Profiles: 100,
+      VendorReceipts: 101,
+      ProfileInventories: 102,
+      ProfileCurrencies: 103,
+      ProfileProgression: 104,
+      PlatformSilver: 105,
+      Characters: 200,
+      CharacterInventories: 201,
+      CharacterProgressions: 202,
+      CharacterRenderData: 203,
+      CharacterActivities: 204,
+      CharacterEquipment: 205,
+      ItemInstances: 300,
+      ItemObjectives: 301,
+      ItemPerks: 302,
+      ItemRenderData: 303,
+      ItemStats: 304,
+      ItemSockets: 305,
+      ItemTalentGrids: 306,
+      ItemCommonData: 307,
+      ItemPlugStates: 308,
+      ItemPlugObjectives: 309,
+      ItemReusablePlugs: 310,
+      Vendors: 400,
+      VendorCategories: 401,
+      VendorSales: 402,
+      Kiosks: 500,
+      CurrencyLookups: 600,
+      PresentationNodes: 700,
+      Collectibles: 800,
+      Records: 900,
+      Transitory: 1000,
+      Metrics: 1100,
+      StringVariables: 1200,
+    };
 
     const DestinyItemState = {
       None: 0,
@@ -282,7 +331,6 @@ export class Destiny2ApiClient {
 
         let lastVersion = (await db.getItem("manifestVersion")) ?? "null";
 
-        console.log(manifest, lastVersion);
         if (manifest.Response.version !== lastVersion) {
           /* Currently cached data is older than 60 minutes, so we clear it. */
           await db.removeItem("lastManifestUpdate");
@@ -374,12 +422,16 @@ export class Destiny2ApiClient {
               loaded += r!.value.byteLength;
 
               progressIndication++;
-              if(progressIndication % 30 === 0) {
+              if (progressIndication % 30 === 0) {
                 eventEmitter.emit(
                   "loading-text",
                   `Loading ${dataTypeWords} (${new Intl.NumberFormat(
                     "sv-SE"
-                  ).format(Math.round((loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON) / 100)} MB)`
+                  ).format(
+                    Math.round(
+                      (loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON
+                    ) / 100
+                  )} MB)`
                 );
               }
               controller.enqueue(r!.value);
@@ -389,7 +441,10 @@ export class Destiny2ApiClient {
               "loading-text",
               `Loading ${dataTypeWords} (${new Intl.NumberFormat(
                 "sv-SE"
-              ).format(Math.round((loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON) / 100)} MB)`
+              ).format(
+                Math.round((loaded / 1024.0 / 1024.0) * 100 + Number.EPSILON) /
+                  100
+              )} MB)`
             );
             controller.close();
           },
@@ -483,16 +538,20 @@ export class Destiny2ApiClient {
       return new Promise(async (resolve, reject) => {
         var bnetMemberId = await db.getItem("destinyBungieMembershipId");
 
-        let linkedProfile = await callUrl('GET',
+        let linkedProfile = await callUrl(
+          "GET",
           `${destinyApiUrl}/Destiny2/-1/Profile/${bnetMemberId}/LinkedProfiles/`,
           null,
           await this.getUserToken()
         );
-        
+
         if (linkedProfile.status === 200) {
           let profiles = await linkedProfile.json();
 
-          db.setItem("destiny-linkedProfiles", JSON.stringify(profiles.Response));
+          db.setItem(
+            "destiny-linkedProfiles",
+            JSON.stringify(profiles.Response)
+          );
 
           self.linkedProfiles = profiles.Response;
 
@@ -502,6 +561,351 @@ export class Destiny2ApiClient {
           reject(linkedProfile);
         }
       });
+    };
+
+    this.getUserProfile = async function (
+      membershipId: string,
+      membershipType: number
+    ) {
+      let interestingComponents = [
+        profileComponents.Profiles,
+        profileComponents.ProfileInventories,
+        profileComponents.ProfileCurrencies,
+        profileComponents.ProfileProgression,
+        profileComponents.Characters,
+        profileComponents.CharacterInventories,
+        profileComponents.CharacterProgressions,
+        profileComponents.CharacterActivities,
+        profileComponents.CharacterEquipment,
+        profileComponents.ItemInstances,
+        profileComponents.ItemObjectives,
+        profileComponents.ItemSockets,
+        profileComponents.ItemTalentGrids,
+        profileComponents.ItemCommonData,
+        profileComponents.ItemPlugStates,
+        profileComponents.ItemPlugObjectives,
+        profileComponents.ItemReusablePlugs,
+        profileComponents.Metrics,
+        profileComponents.Records,
+        profileComponents.Collectibles,
+        profileComponents.StringVariables,
+      ];
+
+      await refreshTokenIfExpired();
+
+      return new Promise(async (resolve, reject) => {
+        let userProfile = await callUrl(
+          "GET",
+          `${destinyApiUrl}/Destiny2/${membershipType}/Profile/${membershipId}/?components=${interestingComponents.join(
+            ","
+          )}`,
+          null,
+          await this.getUserToken()
+        );
+        if (userProfile.status === 200) {
+          let profile = await userProfile.json();
+
+          db.setItem("destiny-profile", JSON.stringify(profile.Response));
+          self.profile = profile.Response;
+
+          resolve(profile.Response);
+        } else {
+          self.refreshToken();
+          reject(userProfile);
+        }
+      });
+    };
+
+    this.getLastPlayedCharacter = async function (forceRefresh = false) {
+      await refreshTokenIfExpired();
+
+      let _profile = self.profile;
+
+      if (forceRefresh) {
+        _profile = null;
+      }
+
+      if (self.linkedProfiles === null) {
+        return null;
+      }
+
+      await self.getLinkedProfiles();
+
+      if (
+        self.linkedProfiles !== null &&
+        self.linkedProfiles.profiles !== null &&
+        self.linkedProfiles.profiles.length > 0
+      ) {
+        var primaryMembership = self.linkedProfiles.profiles.sort(
+          (a: any, b: any) => (a.dateLastPlayed > b.dateLastPlayed ? -1 : 1)
+        )[0];
+
+        _profile = await self.getUserProfile(
+          primaryMembership.membershipId,
+          primaryMembership.membershipType
+        );
+      }
+
+      let characters = [];
+
+      for (let char of _profile.profile.data.characterIds) {
+        characters.push(_profile.characters.data[char]);
+      }
+
+      let _last = characters.sort((a, b) =>
+        a.dateLastPlayed > b.dateLastPlayed ? -1 : 1
+      )[0];
+
+      let lastPlayedCharacter = {
+        characterInfo: _last,
+        characterProgression: !!!_profile.characterProgressions.disabled
+          ? _profile.characterProgressions.data[_last.characterId]
+          : {},
+        characterActivities: !!!_profile.characterActivities.disabled
+          ? _profile.characterActivities.data[_last.characterId]
+          : {},
+        characterUninstancedItemComponents:
+          _profile.characterUninstancedItemComponents[_last.characterId]
+            .objectives.data,
+        characterInventory:
+          _profile.characterInventories.data[_last.characterId].items,
+        characterEquipment:
+          _profile.characterEquipment.data[_last.characterId].items,
+        characterPlugSets: !!!_profile.characterPlugSets.disabled
+          ? _profile.characterPlugSets.data[_last.characterId].plugs
+          : {},
+        characterCollectibles:
+          _profile.characterCollectibles.data[_last.characterId].collectibles,
+        characterRecords: _profile.characterRecords.data[_last.characterId],
+        characterStringVariables:
+          _profile.characterStringVariables.data[_last.characterId],
+        profileProgression: _profile.profileProgression.data,
+        metrics: _profile.metrics.data.metrics,
+        itemComponents: _profile.itemComponents,
+        records: _profile.profileRecords.data,
+        profileInventory: _profile.profileInventory.data.items,
+        profileCurrency: _profile.profileCurrencies.data.items,
+        profilePlugSets: !!!_profile.profilePlugSets.disabled
+          ? _profile.profilePlugSets.data.plugs
+          : {},
+        profileCollectibles: _profile.profileCollectibles.data,
+        profile: _profile.profile.data,
+        profileStringVariables: _profile.profileStringVariables.data,
+      };
+
+      return lastPlayedCharacter;
+    };
+
+    this.getNamedDataObject = async function (
+      forceRefresh = false
+    ): Promise<DestinyNamedObject | null> {
+      let _lastPlayer = await self.getLastPlayedCharacter(forceRefresh);
+
+      if (_lastPlayer == null) {
+        return null;
+      }
+
+      let namedDataObject = {
+        ..._lastPlayer,
+      };
+
+      for (let statKey of Object.keys(namedDataObject.characterInfo.stats)) {
+        namedDataObject.characterInfo.stats[statKey] = {
+          statValue: namedDataObject.characterInfo.stats[statKey],
+          statHash: statKey,
+        };
+      }
+
+      for (let metricKey of Object.keys(namedDataObject.metrics)) {
+        namedDataObject.metrics[metricKey] = {
+          ...namedDataObject.metrics[metricKey],
+          metricHash: metricKey,
+        };
+      }
+
+      for (let recordKey of Object.keys(namedDataObject.records.records)) {
+        namedDataObject.records.records[recordKey] = {
+          ...namedDataObject.records.records[recordKey],
+          recordHash: recordKey,
+          parentNodeHashes:
+            self.destinyDataDefinition.DestinyRecordDefinition[recordKey]
+              .parentNodeHashes,
+        };
+      }
+
+      for (let recordKey of Object.keys(
+        namedDataObject.characterRecords.records
+      )) {
+        namedDataObject.characterRecords.records[recordKey] = {
+          ...namedDataObject.characterRecords.records[recordKey],
+          recordHash: recordKey,
+          parentNodeHashes:
+            self.destinyDataDefinition.DestinyRecordDefinition[recordKey]
+              .parentNodeHashes,
+        };
+      }
+
+      namedDataObject = self.mapHashesToDefinitionsInObject(namedDataObject);
+
+      const cacheBreaker = await db.getItem("destiny2-use-cachebreaker", false);
+      if (cacheBreaker) {
+        const lockableItems = _lastPlayer.characterInventory.filter(
+          (i: any) => i.lockable && i.inventoryitemItemType == 3
+        );
+
+        if (lockableItems.length > 0) {
+          // await self.lockItem(
+          //   _lastPlayer.characterInfo.membershipType,
+          //   _lastPlayer.characterInfo.characterId,
+          //   lockableItems[0].itemInstanceId,
+          //   lockableItems[0].state & DestinyItemState.Locked
+          // );
+        }
+      }
+
+      eventEmitter.emit("destiny2-api-update", namedDataObject);
+
+      return namedDataObject;
+    };
+
+    this.getPresentationNodeFromHash = function (hash: string) {
+      const presentationNameArray = [];
+
+      const presentationNode =
+        self.destinyDataDefinition.DestinyPresentationNodeDefinition[hash];
+      if (presentationNode) {
+        presentationNameArray.unshift({
+          name: presentationNode.displayProperties.name,
+          description: presentationNode.displayProperties.description,
+          icon: presentationNode.displayProperties.icon,
+          hash: hash,
+        });
+
+        if (presentationNode.parentNodeHashes) {
+          for (let _hash of presentationNode.parentNodeHashes) {
+            const subItems = self.getPresentationNodeFromHash(_hash);
+            for (let item of subItems) {
+              presentationNameArray.push(item);
+            }
+          }
+        }
+      }
+
+      return presentationNameArray;
+    };
+
+    this.mapHashesToDefinitionsInObject = function (object: any) {
+      let _objectCopy = { ...object };
+
+      let keys = Object.keys(_objectCopy);
+      for (let key of keys) {
+        let _type = typeof _objectCopy[key];
+        let _field = _objectCopy[key];
+
+        if (Array.isArray(_field)) {
+          for (let x = 0; x < _field.length; x++) {
+            let arrItem = _field[x];
+            if (typeof arrItem === "object") {
+              _field[x] = self.mapHashesToDefinitionsInObject(arrItem);
+            } else {
+              _field[x] = arrItem;
+            }
+          }
+          _objectCopy[key] = _field;
+        } else if (_type === "object" && _field !== null) {
+          _objectCopy[key] = self.mapHashesToDefinitionsInObject(
+            _objectCopy[key]
+          );
+        } else {
+          if (key.indexOf("Hash") > -1 && !Array.isArray(_field)) {
+            let _hashType = key
+              .split("Hash")[0]
+              .replace("current", "")
+              .toLowerCase();
+
+            switch (_hashType) {
+              case "item":
+              case "plugitem":
+                _hashType = "inventoryitem";
+                break;
+            }
+
+            let dataType = destinyDataTypes.find(
+              (i) =>
+                i.toLowerCase() == `Destiny${_hashType}Definition`.toLowerCase()
+            );
+            let definitionData = self.destinyDataDefinition[dataType!];
+            if (
+              definitionData &&
+              definitionData[_field] &&
+              definitionData[_field].displayProperties
+            ) {
+              const dField = definitionData[_field];
+              if (
+                dField.displayProperties.name &&
+                dField.displayProperties.name.length > 0
+              ) {
+                _objectCopy[`${_hashType}Name`] = dField.displayProperties.name;
+              } else if (
+                dField.setData &&
+                dField.setData.questLineName &&
+                dField.setData.questLineName.length > 0
+              ) {
+                _objectCopy[`${_hashType}Name`] = dField.setData.questLineName;
+              }
+
+              if (
+                dField.displayProperties.description &&
+                dField.displayProperties.description.length > 0
+              ) {
+                _objectCopy[`${_hashType}Description`] =
+                  dField.displayProperties.description;
+              }
+
+              if (
+                dField.displayProperties.icon &&
+                dField.displayProperties.icon.length > 0
+              ) {
+                _objectCopy[`${_hashType}Icon`] = dField.displayProperties.icon;
+              }
+
+              if (
+                dField.progressDescription &&
+                dField.progressDescription.length > 0
+              ) {
+                _objectCopy[`${_hashType}ProgressDescription`] =
+                  dField.progressDescription;
+              }
+
+              if (typeof dField.inProgressValueStyle !== "undefined") {
+                _objectCopy[`${_hashType}InProgressValueStyle`] =
+                  dField.inProgressValueStyle;
+              }
+
+              if (typeof dField.completedValueStyle !== "undefined") {
+                _objectCopy[`${_hashType}CompletedValueStyle`] =
+                  dField.completedValueStyle;
+              }
+
+              if (typeof dField.itemType !== "undefined") {
+                _objectCopy[`${_hashType}ItemType`] = dField.itemType;
+              }
+
+              if (typeof dField.parentNodeHashes !== "undefined") {
+                _objectCopy[`parentNodeHashes`] = dField.parentNodeHashes.map(
+                  (item: any) => {
+                    return self.getPresentationNodeFromHash(item);
+                  }
+                );
+              }
+            }
+          }
+
+          _objectCopy[key] = _field;
+        }
+      }
+
+      return _objectCopy;
     };
 
     let self = this;
