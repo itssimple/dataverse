@@ -1,4 +1,6 @@
 import { DestinyNamedObject } from "./apiClasses/destinyNamedObject";
+import { GoalDataItem } from "./apiClasses/goalDataItem";
+import { Destiny2Goals } from "./destiny2Goals";
 import { log } from "./log";
 
 export class Destiny2ApiClient {
@@ -19,12 +21,18 @@ export class Destiny2ApiClient {
   } | null>;
   loadCommonSettings: () => Promise<any>;
   getUserToken: () => Promise<string | null>;
-  getLinkedProfiles: () => Promise<unknown>;
+  getLinkedProfiles: (forceRefresh?: boolean) => Promise<unknown>;
   getUserProfile: (
     membershipId: string,
     membershipType: number
   ) => Promise<unknown>;
   getLastPlayedCharacter: (forceRefresh?: boolean) => Promise<any | null>;
+  getNamedDataObject: (
+    forceRefresh?: boolean
+  ) => Promise<DestinyNamedObject | null>;
+  getPresentationNodeFromHash: (hash: string) => any[];
+  mapHashesToDefinitionsInObject: (object: any) => any;
+  getTrackableData: (forceRefresh?: boolean) => Promise<GoalDataItem[] | null>;
 
   apiToken: string;
   applicationName: string;
@@ -33,11 +41,8 @@ export class Destiny2ApiClient {
   lastVersion: string | null;
   profile: any | null;
   linkedProfiles: any | null;
-  getNamedDataObject: (
-    forceRefresh?: boolean
-  ) => Promise<DestinyNamedObject | null>;
-  getPresentationNodeFromHash: (hash: string) => any[];
-  mapHashesToDefinitionsInObject: (object: any) => any;
+  trackedGoals: GoalDataItem[] | null;
+  goalApi: Destiny2Goals;
 
   constructor(apiToken: string, appName: string) {
     _log("Initializing");
@@ -129,12 +134,10 @@ export class Destiny2ApiClient {
     };
 
     this.lastVersion = null;
-
     this.applicationName = appName;
-
     this.apiToken = apiToken;
-
     this.destinyDataDefinition = {};
+    this.trackedGoals = [];
 
     function _log(...params: any[]) {
       log("D2API", params);
@@ -532,7 +535,15 @@ export class Destiny2ApiClient {
       return await db.getItem("destinyToken");
     };
 
-    this.getLinkedProfiles = async function () {
+    this.getLinkedProfiles = async function (forceRefresh: boolean = false) {
+      if (forceRefresh) {
+        self.linkedProfiles = null;
+      }
+
+      if (self.linkedProfiles != null) {
+        return self.linkedProfiles;
+      }
+
       await refreshTokenIfExpired();
 
       return new Promise(async (resolve, reject) => {
@@ -629,7 +640,7 @@ export class Destiny2ApiClient {
         return null;
       }
 
-      await self.getLinkedProfiles();
+      await self.getLinkedProfiles(forceRefresh);
 
       if (
         self.linkedProfiles !== null &&
@@ -908,7 +919,101 @@ export class Destiny2ApiClient {
       return _objectCopy;
     };
 
+    this.getTrackableData = async function (
+      forceRefresh = false
+    ): Promise<GoalDataItem[] | null> {
+      let namedObject = await self.getNamedDataObject(forceRefresh);
+
+      if (namedObject == null) {
+        return null;
+      }
+
+      let seasonDefinition =
+        self.destinyDataDefinition.DestinySeasonDefinition[
+          namedObject.profile.currentSeasonHash
+        ];
+      let seasonPassDefinition =
+        self.destinyDataDefinition.DestinySeasonPassDefinition[
+          seasonDefinition.seasonPassHash
+        ];
+
+      let trackableDataItems: GoalDataItem[] = [];
+
+      let milestoneData = self.goalApi.getMilestoneData(namedObject);
+      for (let milestone of milestoneData) {
+        trackableDataItems.push(milestone);
+      }
+
+      let bountyData = self.goalApi.getBounties(namedObject);
+      for (let bounty of bountyData) {
+        trackableDataItems.push(bounty);
+      }
+
+      let questData = self.goalApi.getQuests(namedObject);
+      for (let quest of questData) {
+        trackableDataItems.push(quest);
+      }
+
+      let characterRecords = self.goalApi.getCharacterRecords(namedObject);
+
+      for (let characterRecord of characterRecords) {
+        trackableDataItems.push(characterRecord);
+      }
+
+      function sortTrackableItems(a: any, b: any) {
+        if (
+          typeof a.nextLevelAt !== "undefined" &&
+          typeof b.nextLevelAt !== "undefined"
+        ) {
+          let aProgress = (a.progressToNextLevel / a.nextLevelAt) * 100;
+          let bProgress = (b.progressToNextLevel / b.nextLevelAt) * 100;
+
+          return aProgress < bProgress ? 1 : -1;
+        }
+
+        if (typeof a.endDate !== "undefined") {
+          return typeof b.endDate === "undefined" || a.endDate < b.endDate
+            ? -1
+            : 1;
+        }
+
+        return a.order < b.order ? 1 : -1;
+      }
+
+      const trackedItems = trackableDataItems
+        .filter((i) => i.tracked)
+        .sort(sortTrackableItems);
+
+      const itemsWithExpiration = trackableDataItems
+        .filter((i) => i.endDate && !i.tracked)
+        .sort(sortTrackableItems);
+      const itemsWithoutExpiration = trackableDataItems
+        .filter((i) => !i.endDate && !i.tracked)
+        .sort(sortTrackableItems);
+
+      trackableDataItems = [
+        ...trackedItems,
+        ...itemsWithExpiration,
+        ...itemsWithoutExpiration,
+      ];
+
+      trackableDataItems.unshift(
+        self.goalApi.getSeasonRankData(
+          namedObject,
+          seasonDefinition,
+          seasonPassDefinition
+        )
+      );
+
+      self.trackedGoals = trackableDataItems;
+      eventEmitter.emit("goal-list-update", trackableDataItems);
+
+      return trackableDataItems;
+    };
+
     let self = this;
+
+    this.goalApi = new Destiny2Goals(this);
 
     _log("Initialized");
     return this;

@@ -43,7 +43,7 @@ export default function LoggingIn(props: D2AppState) {
 
     setLoadingText("Loading profile data");
 
-    await apiClient.getLinkedProfiles();
+    await apiClient.getLastPlayedCharacter();
 
     setLoadingText("Checking for missing definitions");
 
@@ -58,10 +58,6 @@ export default function LoggingIn(props: D2AppState) {
 
     setLoadingText("Loading data...");
     await apiClient.loadDataFromStorage();
-    setLoadingText("Loading data... done");
-
-    setLoadingText("Loading character data...");
-    await apiClient.getLastPlayedCharacter();
 
     props.isDataLoaded.value = true;
 
