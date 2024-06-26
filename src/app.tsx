@@ -8,12 +8,13 @@ import Dashboard from "./pages/dashboard";
 import { Footer } from "./components/footer";
 import LoggingIn from "./pages/logging-in";
 import { useContext } from "preact/hooks";
+import { Header } from "./components/header";
 
 export function App() {
   const state = useContext(window.appState);
   return (
     <>
-      <header className="header subscreen">Dataverse</header>
+      <Header />
       <div class="app">
         <Router history={createHashHistory()}>
           <Fragment path="/">

@@ -31,10 +31,12 @@ window.apiClient = new Destiny2ApiClient(
 function createAppState(): D2AppState {
   const isDataLoaded = signal(false);
   const isAuthenticated = signal(false);
+  const goals = signal([]);
 
   return {
     isDataLoaded,
     isAuthenticated,
+    goals,
   };
 }
 
