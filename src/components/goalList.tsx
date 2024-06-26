@@ -3,11 +3,12 @@ import { GoalDataItem } from "../scripts/apiClasses/goalDataItem";
 import { formatTimespan } from "../scripts/utils";
 import "../styles/components/goalList.scss";
 import { D2AppState } from "../classes/appState";
+import { useEffect } from "preact/hooks";
 
 const intlFormat = new Intl.NumberFormat();
 
 const destinyBaseUrl = "https://www.bungie.net";
-var visibleItems = 15;
+
 var trackingItems = {
   milestones: true,
   bounties: true,
@@ -20,37 +21,25 @@ var cachedGoals: GoalDataItem[] = [];
 
 export function GoalList(props: D2AppState) {
   const eventEmitter = window.eventEmitter;
-  const db = window.db;
   const apiClient = window.apiClient;
 
-  eventEmitter.addEventListener("goal-list-update", updateGoalList);
+  var dataUpdate: NodeJS.Timer;
 
-  eventEmitter.addEventListener("tracked-items-changed", async () => {
-    trackingItems = {
-      milestones: JSON.parse((await db.getItem("d2-track-milestones")) ?? true),
-      bounties: JSON.parse((await db.getItem("d2-track-bounties")) ?? true),
-      quests: JSON.parse((await db.getItem("d2-track-quests")) ?? true),
-      records: JSON.parse((await db.getItem("d2-track-records")) ?? true),
-      seasonRank: JSON.parse((await db.getItem("d2-track-seasonrank")) ?? true),
-    };
+  useEffect(() => {
+    eventEmitter.addEventListener("goal-list-update", updateGoalList);
 
-    if (cachedGoals && cachedGoals.length > 0) {
-      updateGoalList(cachedGoals);
-    }
-  });
+    (async function () {
+      await apiClient.getTrackableData();
 
-  eventEmitter.addEventListener("visible-items-changed", (items: any) => {
-    visibleItems = items;
+      dataUpdate = setInterval(async () => {
+        await apiClient.getTrackableData();
+      }, 15 * 1000);
 
-    if (cachedGoals && cachedGoals.length > 0) {
-      updateGoalList(cachedGoals);
-    }
-  });
-
-  (async function () {
-    await loadSettings();
-    await apiClient.getTrackableData();
-  })();
+      return () => {
+        clearInterval(dataUpdate);
+      };
+    })();
+  }, []);
 
   function renderProgress(goal: any) {
     let progress: any = null;
@@ -137,10 +126,6 @@ export function GoalList(props: D2AppState) {
     let _visibleGoals: GoalDataItem[] = [];
 
     for (let goal of goals) {
-      if (visibleItems > 0 && goalsVisible >= visibleItems) {
-        break;
-      }
-
       let addGoal = true;
 
       switch (goal.type) {
@@ -169,18 +154,6 @@ export function GoalList(props: D2AppState) {
 
     props.goals.value = _visibleGoals;
     cachedGoals = goals;
-  }
-
-  async function loadSettings() {
-    visibleItems = parseInt((await db.getItem("d2-visible-items")) ?? 0);
-
-    trackingItems = {
-      milestones: JSON.parse((await db.getItem("d2-track-milestones")) ?? true),
-      bounties: JSON.parse((await db.getItem("d2-track-bounties")) ?? true),
-      quests: JSON.parse((await db.getItem("d2-track-quests")) ?? true),
-      records: JSON.parse((await db.getItem("d2-track-records")) ?? true),
-      seasonRank: JSON.parse((await db.getItem("d2-track-seasonrank")) ?? true),
-    };
   }
 
   return (
