@@ -1,7 +1,7 @@
 import { D2AppState } from "../classes/appState";
 
 export default function MainPage(props: D2AppState) {
-  if (props.isAuthenticated) {
+  if (props.isAuthenticated.value) {
     location.href = "/#/logging-in";
     return <></>;
   }
