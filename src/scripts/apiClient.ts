@@ -616,10 +616,18 @@ export class Destiny2ApiClient {
         if (userProfile.status === 200) {
           let profile = await userProfile.json();
 
-          db.setItem("destiny-profile", JSON.stringify(profile.Response));
-          self.profile = profile.Response;
+          if (
+            typeof self.profile == "undefined" ||
+            new Date(self.profile.responseMintedTimestamp).getTime() <
+              new Date(profile.Response.responseMintedTimestamp).getTime()
+          ) {
+            db.setItem("destiny-profile", JSON.stringify(profile.Response));
+            self.profile = profile.Response;
 
-          resolve(profile.Response);
+            resolve(profile.Response);
+          } else {
+            resolve(self.profile);
+          }
         } else {
           self.refreshToken();
           reject(userProfile);
@@ -631,6 +639,16 @@ export class Destiny2ApiClient {
       await refreshTokenIfExpired();
 
       let _profile = self.profile;
+
+      if (
+        typeof _profile !== "undefined" &&
+        (new Date().getTime() -
+          new Date(_profile.responseMintedTimestamp).getTime()) /
+          1000 >
+          60
+      ) {
+        forceRefresh = true;
+      }
 
       if (forceRefresh) {
         _profile = null;
