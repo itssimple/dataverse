@@ -4,7 +4,7 @@
  * @param {...any} params   Everything else, text, objects and so forth.
  */
 export function log(category: string, ...params: any[]): void {
-  if (!showLogs) return;
+  if (!(window as any).showDataverseLogs) return;
   if (timestampLogs) {
     params = [...params, new Date().toISOString()];
   }
@@ -12,4 +12,3 @@ export function log(category: string, ...params: any[]): void {
 }
 
 var timestampLogs = false;
-var showLogs = false;
