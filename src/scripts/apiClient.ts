@@ -950,9 +950,16 @@ export class Destiny2ApiClient {
         self.destinyDataDefinition.DestinySeasonDefinition[
           namedObject.profile.currentSeasonHash
         ];
+
+      let currentSeasonPass = seasonDefinition.seasonPassList.find(
+        (i: any) =>
+          new Date() < new Date(Date.parse(i.seasonPassEndDate)) &&
+          new Date() >= new Date(Date.parse(i.seasonPassStartDate))
+      );
+
       let seasonPassDefinition =
         self.destinyDataDefinition.DestinySeasonPassDefinition[
-          seasonDefinition.seasonPassHash
+          currentSeasonPass.seasonPassHash
         ];
 
       let trackableDataItems: GoalDataItem[] = [];

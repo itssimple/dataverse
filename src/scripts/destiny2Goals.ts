@@ -37,7 +37,7 @@ export class Destiny2Goals {
     ): SeasonRankData {
       let seasonPassData =
         namedObject.characterProgression.progressions[
-          seasonDefinition.seasonPassProgressionHash
+          seasonPassDefinition.rewardProgressionHash
         ];
       let seasonPassProgressionData =
         namedObject.characterProgression.progressions[
