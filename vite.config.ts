@@ -31,6 +31,7 @@ export default defineConfig(({ command, mode }) => {
     ],
     server: {
       port: 14949,
+      allowedHosts: ["localhost.eververse.trade"],
     },
   };
 });
