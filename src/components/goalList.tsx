@@ -23,7 +23,7 @@ export function GoalList(props: D2AppState) {
   const eventEmitter = window.eventEmitter;
   const apiClient = window.apiClient;
 
-  var dataUpdate: NodeJS.Timer;
+  var dataUpdate: NodeJS.Timeout;
 
   useEffect(() => {
     eventEmitter.addEventListener("goal-list-update", updateGoalList);

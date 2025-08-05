@@ -43,6 +43,23 @@ export default function LoggingIn(props: D2AppState) {
 
       log("LOGIN", manifestVersion);
 
+      setLoadingText("Checking Destiny 2 server status");
+
+      const status = await apiClient.checkDestinyStatus();
+
+      if (status && !status.systems.Destiny2.enabled) {
+        // Destiny 2 is not enabled
+        setLoadingText(
+          "Destiny 2 is currently down for maintenance, trying again in one minute."
+        );
+
+        setTimeout(() => {
+          location.href = "/";
+        }, 60000);
+
+        return;
+      }
+
       setLoadingText("Loading profile data");
 
       await apiClient.getLastPlayedCharacter();
@@ -87,7 +104,6 @@ export default function LoggingIn(props: D2AppState) {
         console.error(error);
         console.error(await error.json());
       }
-      //location.href = "/";
     });
 
   return (

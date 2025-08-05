@@ -33,6 +33,16 @@ export class Destiny2ApiClient {
   getPresentationNodeFromHash: (hash: string) => any[];
   mapHashesToDefinitionsInObject: (object: any) => any;
   getTrackableData: (forceRefresh?: boolean) => Promise<GoalDataItem[] | null>;
+  checkDestinyStatus: () => Promise<{
+    destiny2CoreSettings: any;
+    systems: {
+      Destiny2: {
+        enabled: boolean;
+        [key: string]: any;
+      };
+      [key: string]: any;
+    };
+  }>;
 
   apiToken: string;
   applicationName: string;
@@ -102,6 +112,7 @@ export class Destiny2ApiClient {
       CharacterRenderData: 203,
       CharacterActivities: 204,
       CharacterEquipment: 205,
+      CharacterLoadouts: 206,
       ItemInstances: 300,
       ItemObjectives: 301,
       ItemPerks: 302,
@@ -124,6 +135,8 @@ export class Destiny2ApiClient {
       Transitory: 1000,
       Metrics: 1100,
       StringVariables: 1200,
+      Craftables: 1300,
+      SocialCommendations: 1400,
     };
 
     const DestinyItemState = {
@@ -1059,6 +1072,34 @@ export class Destiny2ApiClient {
       eventEmitter.emit("goal-list-update", trackableDataItems);
 
       return trackableDataItems;
+    };
+
+    this.checkDestinyStatus = async function () {
+      _log("Checking Destiny status");
+      const statusRequest = await callUrl("GET", `${destinyApiUrl}/Settings/`);
+
+      const status = await statusRequest.json();
+
+      const systems = ["D2Manifest", "DestinyLinkedProfiles", "Destiny2"];
+
+      const systemStatuses: {
+        [key: string]: any;
+      } = {};
+
+      for (let system of systems) {
+        if (status.Response.systems[system]) {
+          systemStatuses[system] = status.Response.systems[system];
+        }
+      }
+
+      return {
+        destiny2CoreSettings: status.Response.destiny2CoreSettings,
+        systems: {
+          Destiny2: systemStatuses.Destiny2,
+          D2Manifest: systemStatuses.D2Manifest,
+          DestinyLinkedProfiles: systemStatuses.DestinyLinkedProfiles,
+        },
+      };
     };
 
     let self = this;
