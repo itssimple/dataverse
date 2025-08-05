@@ -387,7 +387,32 @@ export class Destiny2ApiClient {
 
     this.loadDestinyContentData = async function (definitions: string[] = []) {
       for (let dataType of definitions) {
-        await loadDestinyContentDataType(dataType);
+        let success = false;
+        let attempts = 0;
+        let lastError = null;
+        while (!success && attempts < 5) {
+          try {
+            await loadDestinyContentDataType(dataType);
+            success = true;
+          } catch (err) {
+            lastError = err;
+            // Remove possibly corrupted data
+            await db.removeItem(`destinyContent-${dataType}`);
+            attempts++;
+            if (attempts < 5) {
+              // Exponential backoff: 250ms, 500ms, 1000ms, 2000ms, 4000ms
+              const wait = 250 * Math.pow(2, attempts - 1);
+              await new Promise((res) => setTimeout(res, wait));
+            }
+          }
+        }
+        if (!success) {
+          eventEmitter.emit("loading-error", {
+            dataType,
+            error: lastError,
+            message: `Failed to load ${dataType} after 5 attempts.`,
+          });
+        }
       }
     };
 
